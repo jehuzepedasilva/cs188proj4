@@ -27,7 +27,6 @@ from factorOperations import eliminateWithCallTracking
 ########### ########### ###########
 ########### QUESTION 1  ###########
 ########### ########### ###########
-
 def constructBayesNet(gameState: hunters.GameState):
     """
     Construct an empty Bayes net according to the structure given in Figure 1
@@ -144,7 +143,6 @@ def inferenceByEnumeration(bayesNet: bn, queryVariables: List[str], evidenceDict
 ########### ########### ###########
 ########### QUESTION 4  ###########
 ########### ########### ###########
-
 def inferenceByVariableEliminationWithCallTracking(callTrackingList=None):
 
     def inferenceByVariableElimination(bayesNet: bn, queryVariables: List[str], evidenceDict: Dict, eliminationOrder: List[str]):
@@ -214,7 +212,7 @@ def inferenceByVariableEliminationWithCallTracking(callTrackingList=None):
                 # join all our  factors that involve 'i' into a single new factor.
             new_list, new_var = joinFactorsByVariable(new_list, i)
 
-                #PROB CAN'T B;E LARGER THAN 1
+                #PROB CAN'T BE LARGER THAN 1
             if len(new_var.unconditionedVariables()) > 1:
                     # Eliminate the variable 'i' from the new factor,
                 new_var = eliminate(new_var, i)
@@ -340,7 +338,6 @@ class DiscreteDistribution(dict):
     ########### ########### ###########
     ########### QUESTION 5a ###########
     ########### ########### ###########
-
     def normalize(self):
         """
         Normalize the distribution such that the total value of all keys sums
@@ -471,7 +468,6 @@ class InferenceModule:
     ########### ########### ###########
     ########### QUESTION 5b ###########
     ########### ########### ###########
-
     def getObservationProb(self, noisyDistance: int, pacmanPosition: Tuple, ghostPosition: Tuple, jailPosition: Tuple):
         """
         Return the probability P(noisyDistance | pacmanPosition, ghostPosition).
@@ -579,7 +575,6 @@ class ExactInference(InferenceModule):
     ########### ########### ###########
     ########### QUESTION 6  ###########
     ########### ########### ###########
-
     def observeUpdate(self, observation: int, gameState: busters.GameState):
         """
         Update beliefs based on the distance observation and Pacman's position.
@@ -596,14 +591,20 @@ class ExactInference(InferenceModule):
         position is known.
         """
         "*** YOUR CODE HERE ***"
-        raiseNotDefined()
+        distribution = DiscreteDistribution()
+        pacman_pos = gameState.getPacmanPosition()
+        jail_pos = self.getJailPosition()
+        
+        for pos in self.allPositions:
+            distribution[pos] = self.getObservationProb(observation, pacman_pos, pos, jail_pos) * self.getBeliefDistribution()[pos]
+            
+        self.beliefs = distribution
         "*** END YOUR CODE HERE ***"
         self.beliefs.normalize()
     
     ########### ########### ###########
     ########### QUESTION 7  ###########
     ########### ########### ###########
-
     def elapseTime(self, gameState: busters.GameState):
         """
         Predict beliefs in response to a time step passing from the current
@@ -614,7 +615,15 @@ class ExactInference(InferenceModule):
         current position is known.
         """
         "*** YOUR CODE HERE ***"
-        raiseNotDefined()
+        distribution = DiscreteDistribution()
+        
+        for old_pos in self.allPositions:
+            new_pos_dist = self.getPositionDistribution(gameState, old_pos)
+            for pos, prob in new_pos_dist.items():
+                distribution[pos] += self.getBeliefDistribution()[old_pos] * prob
+                
+        self.beliefs = distribution
+        self.beliefs.normalize()
         "*** END YOUR CODE HERE ***"
 
     def getBeliefDistribution(self):
@@ -635,7 +644,6 @@ class ParticleFilter(InferenceModule):
     ########### ########### ###########
     ########### QUESTION 9  ###########
     ########### ########### ###########
-
     def initializeUniformly(self, gameState: busters.GameState):
         """
         Initialize a list of particles. Use self.numParticles for the number of
@@ -646,7 +654,16 @@ class ParticleFilter(InferenceModule):
         """
         self.particles = []
         "*** YOUR CODE HERE ***"
-        raiseNotDefined()
+        legal_positions = len(self.legalPositions)
+        num_part = self.numParticles // legal_positions
+        remainder = self.numParticles % legal_positions
+        # print(legal_positions, num_part, remainder)
+
+        for position in self.legalPositions:
+            self.particles.extend([position] * num_part)
+            
+        for i in range(remainder):
+            self.particles.append(self.legalPositions[i])
         "*** END YOUR CODE HERE ***"
 
     def getBeliefDistribution(self):
@@ -658,13 +675,19 @@ class ParticleFilter(InferenceModule):
         This function should return a normalized distribution.
         """
         "*** YOUR CODE HERE ***"
-        raiseNotDefined()
+        distribution = DiscreteDistribution()
+
+        for particle in self.particles:
+            distribution[particle] += 1
+
+        distribution.normalize()
+
+        return distribution
         "*** END YOUR CODE HERE ***"
     
     ########### ########### ###########
     ########### QUESTION 10 ###########
     ########### ########### ###########
-
     def observeUpdate(self, observation: int, gameState: busters.GameState):
         """
         Update beliefs based on the distance observation and Pacman's position.
@@ -678,19 +701,34 @@ class ParticleFilter(InferenceModule):
         the DiscreteDistribution may be useful.
         """
         "*** YOUR CODE HERE ***"
-        raiseNotDefined()
+        distribution = DiscreteDistribution()
+        for p in self.particles:
+            pacman_pos = gameState.getPacmanPosition()
+            jail_pos = self.getJailPosition()
+            weight = self.getObservationProb(observation, pacman_pos, p, jail_pos)
+            distribution[p] += weight
+
+        if not distribution.total():
+            self.initializeUniformly(gameState)
+            return    
+        for p in range(self.numParticles):
+            self.particles[p] = distribution.sample()
+        self.beliefs = distribution.normalize
         "*** END YOUR CODE HERE ***"
     
     ########### ########### ###########
     ########### QUESTION 11 ###########
     ########### ########### ###########
-
     def elapseTime(self, gameState):
         """
         Sample each particle's next state based on its current state and the
         gameState.
         """
         "*** YOUR CODE HERE ***"
-        raiseNotDefined()
+        new_particles = []
+        for old_pos in self.particles:
+            newPosDist = self.getPositionDistribution(gameState, old_pos)
+            new_particles.append(newPosDist.sample())
+        self.particles = new_particles
         "*** END YOUR CODE HERE ***"
 
