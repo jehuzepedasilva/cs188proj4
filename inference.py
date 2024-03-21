@@ -679,7 +679,7 @@ class ParticleFilter(InferenceModule):
 
         for particle in self.particles:
             distribution[particle] += 1
-
+        # print(distribution)
         distribution.normalize()
 
         return distribution
@@ -709,6 +709,7 @@ class ParticleFilter(InferenceModule):
             distribution[p] += weight
 
         if not distribution.total():
+            # print('in if')
             self.initializeUniformly(gameState)
             return    
         for p in range(self.numParticles):
@@ -727,8 +728,8 @@ class ParticleFilter(InferenceModule):
         "*** YOUR CODE HERE ***"
         new_particles = []
         for old_pos in self.particles:
-            newPosDist = self.getPositionDistribution(gameState, old_pos)
-            new_particles.append(newPosDist.sample())
+            new_pos_dist = self.getPositionDistribution(gameState, old_pos)
+            new_particles.append(new_pos_dist.sample())
         self.particles = new_particles
         "*** END YOUR CODE HERE ***"
 
